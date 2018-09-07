@@ -91,9 +91,6 @@ buildscript {
         maven {
             url "$artifactory_contextUrl/corda-releases"
         }
-        maven {
-            url 'https://plugins.gradle.org/m2/'
-        }
     }
     dependencies {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
@@ -121,6 +118,7 @@ plugins {
     // but the DSL has some restrictions e.g can't be used on the allprojects section. So we should revisit this if there are improvements in Gradle.
     // Version 1.0.2 of this plugin uses capsule:1.0.1
     id "us.kirchmeier.capsule" version "1.0.2"
+    id "com.gradle.build-scan" version "1.16"
 }
 
 ext {
