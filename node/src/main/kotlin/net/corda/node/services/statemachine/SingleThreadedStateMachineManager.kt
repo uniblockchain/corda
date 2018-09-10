@@ -530,7 +530,7 @@ class SingleThreadedStateMachineManager(
         val resultFuture = openFuture<Any?>()
         flowStateMachineImpl.transientValues = TransientReference(createTransientValues(flowId, resultFuture))
         flowLogic.stateMachine = flowStateMachineImpl
-        val frozenFlowLogic = (flowLogic as FlowLogic<*>).serialize(context = checkpointSerializationContext!!)
+        val frozenFlowLogic = (flowLogic as FlowLogic<*>).checkpointSerialize(context = checkpointSerializationContext!!)
 
         val flowCorDappVersion = createSubFlowVersion(serviceHub.cordappProvider.getCordappForFlow(flowLogic), serviceHub.myInfo.platformVersion)
 
@@ -612,7 +612,7 @@ class SingleThreadedStateMachineManager(
 
     private fun deserializeCheckpoint(serializedCheckpoint: SerializedBytes<Checkpoint>): Checkpoint? {
         return try {
-            serializedCheckpoint.deserialize(context = checkpointSerializationContext!!)
+            serializedCheckpoint.checkpointDeserialize(context = checkpointSerializationContext!!)
         } catch (exception: Throwable) {
             logger.error("Encountered unrestorable checkpoint!", exception)
             null
@@ -657,7 +657,7 @@ class SingleThreadedStateMachineManager(
         val resultFuture = openFuture<Any?>()
         val fiber = when (flowState) {
             is FlowState.Unstarted -> {
-                val logic = flowState.frozenFlowLogic.deserialize(context = checkpointSerializationContext!!)
+                val logic = flowState.frozenFlowLogic.checkpointDeserialize(context = checkpointSerializationContext!!)
                 val state = StateMachineState(
                         checkpoint = checkpoint,
                         pendingDeduplicationHandlers = initialDeduplicationHandler?.let { listOf(it) } ?: emptyList(),
@@ -676,7 +676,7 @@ class SingleThreadedStateMachineManager(
                 fiber
             }
             is FlowState.Started -> {
-                val fiber = flowState.frozenFiber.deserialize(context = checkpointSerializationContext!!)
+                val fiber = flowState.frozenFiber.checkpointDeserialize(context = checkpointSerializationContext!!)
                 val state = StateMachineState(
                         checkpoint = checkpoint,
                         pendingDeduplicationHandlers = initialDeduplicationHandler?.let { listOf(it) } ?: emptyList(),
