@@ -38,6 +38,12 @@ dependencies {
     compile "com.fasterxml.jackson.core:jackson-databind:$jackson_version"
     runtime 'com.mattbertolini:liquibase-slf4j:2.0.0'
 
+    // Distributed tracing
+    compile "io.jaegertracing:jaeger-core:0.30.3"
+    compile "io.jaegertracing:jaeger-thrift:0.30.3"
+    compile "io.opentracing:opentracing-api:0.31.0"
+    compile "io.opentracing:opentracing-util:0.31.0"
+
     // Unit testing helpers.
     testCompile "junit:junit:$junit_version"
     testCompile "org.assertj:assertj-core:$assertj_version"

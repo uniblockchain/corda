@@ -14,6 +14,8 @@ import net.corda.node.services.api.ServiceHubInternal
 import net.corda.nodeapi.internal.persistence.contextDatabase
 import net.corda.nodeapi.internal.persistence.contextTransaction
 import net.corda.nodeapi.internal.persistence.contextTransactionOrNull
+import net.corda.nodeapi.internal.tracing.CordaTracer
+import net.corda.nodeapi.internal.tracing.CordaTracer.Companion.tag
 import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.TimeUnit
@@ -53,7 +55,80 @@ class ActionExecutorImpl(
     @Suspendable
     override fun executeAction(fiber: FlowFiber, action: Action) {
         log.trace { "Flow ${fiber.id} executing $action" }
-        return when (action) {
+
+        CordaTracer.current.span(action.javaClass.simpleName) {
+            it.tag("action", action)
+            // it.tag("email", services.configuration.emailAddress)
+            when (action) {
+                is Action.TrackTransaction -> {
+                    it.tag("hash", action.hash)
+                }
+                is Action.PersistCheckpoint -> {
+                    it.tag("checkpoint", action.checkpoint)
+                    it.tag("is-checkpoint-update", action.isCheckpointUpdate)
+                }
+                is Action.PersistDeduplicationFacts -> {}
+                is Action.AcknowledgeMessages -> {}
+                is Action.PropagateErrors -> {
+                    it.tag("sender", action.senderUUID)
+                    it.tag("errors", action.errorMessages.joinToString { it.toString() })
+                }
+                is Action.ScheduleEvent -> {
+                    it.tag("event", action.event)
+                }
+                is Action.SleepUntil -> {
+                    it.tag("until-time", action.time)
+                }
+                is Action.RemoveCheckpoint -> {
+                    it.tag("checkpoint-id", action.id.uuid)
+                }
+                is Action.SendInitial -> {
+                    it.tag("deduplication-id", action.deduplicationId)
+                    it.tag("initialise", action.initialise)
+                    it.tag("party", action.party)
+                }
+                is Action.SendExisting -> {
+                    it.tag("deduplication-id", action.deduplicationId)
+                    it.tag("message", action.message)
+                    it.tag("peer-party", action.peerParty)
+                }
+                is Action.AddSessionBinding -> {
+                    it.tag("bind-flow-id", action.flowId.uuid)
+                    it.tag("bind-session-id", action.sessionId)
+                }
+                is Action.RemoveSessionBindings -> {
+                    it.tag("session-ids", action.sessionIds.joinToString { it.toString() })
+                }
+                is Action.SignalFlowHasStarted -> {
+                    it.tag("started-flow-id", action.flowId.uuid)
+                }
+                is Action.RemoveFlow -> {
+                    it.tag("removed-flow-id", action.flowId.uuid)
+                    it.tag("last-state", action.lastState)
+                    it.tag("removal-reason", action.removalReason)
+                }
+                is Action.CreateTransaction -> {}
+                is Action.RollbackTransaction -> {}
+                is Action.CommitTransaction -> {}
+                is Action.ExecuteAsyncOperation -> {
+                    it.tag("operation", action.operation)
+                }
+                is Action.ReleaseSoftLocks -> {
+                    it.tag("uuid", action.uuid)
+                }
+                is Action.RetryFlowFromSafePoint -> {
+                    it.tag("currentState", action.currentState)
+                }
+                is Action.ScheduleFlowTimeout -> {
+                    it.tag("scheduled-for-flow-id", action.flowId.uuid)
+                }
+                is Action.CancelFlowTimeout -> {
+                    it.tag("cancelled-for-flow-id", action.flowId.uuid)
+                }
+            }
+        }
+
+        when (action) {
             is Action.TrackTransaction -> executeTrackTransaction(fiber, action)
             is Action.PersistCheckpoint -> executePersistCheckpoint(action)
             is Action.PersistDeduplicationFacts -> executePersistDeduplicationIds(action)

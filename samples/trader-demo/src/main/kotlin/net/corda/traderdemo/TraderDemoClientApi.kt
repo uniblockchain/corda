@@ -18,6 +18,7 @@ import net.corda.finance.contracts.getCashBalance
 import net.corda.finance.flows.CashIssueFlow
 import net.corda.finance.flows.CashPaymentFlow
 import net.corda.node.services.vault.VaultSchemaV1
+import net.corda.nodeapi.internal.tracing.CordaTracer
 import net.corda.testing.internal.vault.VaultFiller.Companion.calculateRandomlySizedAmounts
 import net.corda.traderdemo.flow.CommercialPaperIssueFlow
 import net.corda.traderdemo.flow.SellerFlow
@@ -92,5 +93,6 @@ class TraderDemoClientApi(val rpc: CordaRPCOps) {
         // The line below blocks and waits for the future to resolve.
         val stx = rpc.startFlow(::SellerFlow, otherParty, amount).returnValue.getOrThrow()
         println("Sale completed - we have a happy customer!\n\nFinal transaction is:\n\n${Emoji.renderIfSupported(stx.tx)}")
+        CordaTracer.terminate()
     }
 }

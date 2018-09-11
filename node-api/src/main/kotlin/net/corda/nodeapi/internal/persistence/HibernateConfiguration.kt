@@ -78,6 +78,7 @@ class HibernateConfiguration(
         val config = Configuration(metadataSources).setProperty("hibernate.connection.provider_class", NodeDatabaseConnectionProvider::class.java.name)
                 .setProperty("hibernate.hbm2ddl.auto", if (databaseConfig.initialiseSchema) "update" else "validate")
                 .setProperty("hibernate.format_sql", "true")
+                .setProperty("hibernate.generate_statistics", "true")
                 .setProperty("hibernate.connection.isolation", databaseConfig.transactionIsolationLevel.jdbcValue.toString())
 
         schemas.forEach { schema ->

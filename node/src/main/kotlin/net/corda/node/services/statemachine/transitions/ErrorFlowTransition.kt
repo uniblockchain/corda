@@ -75,7 +75,7 @@ class ErrorFlowTransition(
 
                 val removalReason = FlowRemovalReason.ErrorFinish(allErrors)
                 actions.add(Action.RemoveFlow(context.id, removalReason, currentState))
-                FlowContinuation.Abort
+                FlowContinuation.ProcessEvents // XXX
             } else {
                 // Otherwise keep processing events. This branch happens when there are some outstanding initiating
                 // sessions that prevent the removal of the flow.

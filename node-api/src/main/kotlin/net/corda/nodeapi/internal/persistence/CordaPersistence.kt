@@ -1,8 +1,14 @@
 package net.corda.nodeapi.internal.persistence
 
 import co.paralleluniverse.strands.Strand
+import io.opentracing.Span
 import net.corda.core.schemas.MappedSchema
 import net.corda.core.utilities.contextLogger
+import net.corda.nodeapi.internal.tracing.CordaTracer
+import net.corda.nodeapi.internal.tracing.CordaTracer.Companion.error
+import net.corda.nodeapi.internal.tracing.CordaTracer.Companion.finish
+import net.corda.nodeapi.internal.tracing.CordaTracer.Companion.tag
+import org.hibernate.SessionFactory
 import rx.Observable
 import rx.Subscriber
 import rx.subjects.UnicastSubject
@@ -138,14 +144,30 @@ class CordaPersistence(
         _contextDatabase.set(this)
         val outer = contextTransactionOrNull
         return if (outer != null) {
-            outer.statement()
+//            CordaTracer.current.span("Transaction", closeAutomatically = false) {
+//                outer.onCommit {
+//                    it.tag("commit", true)
+//                    it.finish()
+//                }
+//                outer.onRollback {
+//                    it.tag("commit", false)
+//                    it.error("Transaction rolled back")
+//                    it.finish()
+//                }
+//                it.tag("jdbc-url", contextDatabase.jdbcUrl)
+                outer.statement()
+//            }
         } else {
-            inTopLevelTransaction(isolationLevel, recoverableFailureTolerance, recoverAnyNestedSQLException, statement)
+            CordaTracer.current.span("Transaction", closeAutomatically = false) {
+//                it.tag("jdbc-url", contextDatabase.jdbcUrl)
+                inTopLevelTransaction(isolationLevel, recoverableFailureTolerance, recoverAnyNestedSQLException, statement, it)
+            }
         }
     }
 
     private fun <T> inTopLevelTransaction(isolationLevel: TransactionIsolationLevel, recoverableFailureTolerance: Int,
-                                          recoverAnyNestedSQLException: Boolean, statement: DatabaseTransaction.() -> T): T {
+                                          recoverAnyNestedSQLException: Boolean, statement: DatabaseTransaction.() -> T,
+                                          span: Span? = null): T {
         var recoverableFailureCount = 0
         fun <T> quietly(task: () -> T) = try {
             task()
@@ -155,10 +177,23 @@ class CordaPersistence(
         while (true) {
             val transaction = contextDatabase.currentOrNew(isolationLevel) // XXX: Does this code really support statement changing the contextDatabase?
             try {
+                // https://stackoverflow.com/questions/3818070/hibernate-executed-queries-and-testing
+                span.tag("schema", transaction.connection.schema)
                 val answer = transaction.statement()
                 transaction.commit()
+//                val queries = contextDatabase.entityManagerFactory.statistics.queries
+//                var i = 1
+//                for (query in queries) {
+//                    span.tag("query$i", query)
+//                    i++
+//                }
+                span.tag("commit", true)
+                span.finish()
                 return answer
             } catch (e: Throwable) {
+                span.tag("commit", false)
+                span.error(e.message ?: "Transaction failed", e)
+                span.finish()
                 quietly(transaction::rollback)
                 if (e is SQLException || (recoverAnyNestedSQLException && e.hasSQLExceptionCause())) {
                     if (++recoverableFailureCount > recoverableFailureTolerance) throw e

@@ -36,6 +36,11 @@ dependencies {
     // Corda Plugins: dependent flows and services
     cordapp project(':samples:bank-of-corda-demo')
 
+    cordaCompile "io.jaegertracing:jaeger-core:0.30.3"
+    cordaCompile "io.jaegertracing:jaeger-thrift:0.30.3"
+    cordaCompile "io.opentracing:opentracing-api:0.31.0"
+    cordaCompile "io.opentracing:opentracing-util:0.31.0"
+
     testCompile project(':test-utils')
     testCompile "junit:junit:$junit_version"
     testCompile "org.assertj:assertj-core:${assertj_version}"
