@@ -4360,7 +4360,7 @@ public interface net.corda.core.schemas.QueryableState extends net.corda.core.co
 ##
 public interface net.corda.core.schemas.StatePersistable
 ##
-public interface net.corda.core.serialization.CheckpointSerializationScheme
+public interface net.corda.core.serialization.CheckpointSerializer
   @NotNull
   public abstract T deserialize(net.corda.core.utilities.ByteSequence, Class<T>, net.corda.core.serialization.CheckpointSerializationContext)
   @NotNull

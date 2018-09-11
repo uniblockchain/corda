@@ -3,7 +3,6 @@ package net.corda.testing.core
 import com.nhaarman.mockito_kotlin.any
 import com.nhaarman.mockito_kotlin.doAnswer
 import com.nhaarman.mockito_kotlin.whenever
-import net.corda.core.DoNotImplement
 import net.corda.core.internal.staticField
 import net.corda.core.serialization.SerializationContext
 import net.corda.core.serialization.internal.SerializationEnvironment
@@ -46,11 +45,12 @@ class SerializationEnvironmentRule(private val inheritable: Boolean = false) : T
 
     private lateinit var env: SerializationEnvironment
     val serializationFactory get() = env.serializationFactory
-    val checkpointSerializationFactory get() = env.checkpointSerializationFactory
+    val checkpointSerializer get() = env.checkpointSerializer
+    val defaultCheckpointContext get() = env.checkpointContext
 
-    @Deprecated("Use checkpointSerializationFactory.defaultContext instead")
+    @Deprecated("Use defaultCheckpointContext instead")
     val checkpointContext: SerializationContext get() =
-        throw UnsupportedOperationException("Use checkpointSerializationFactory.defaultContext instead")
+        throw UnsupportedOperationException("Use defaultCheckpointContext instead")
 
     override fun apply(base: Statement, description: Description): Statement {
         init(description.toString())

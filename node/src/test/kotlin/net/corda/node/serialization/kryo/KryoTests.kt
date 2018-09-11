@@ -44,12 +44,10 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
         fun compression() = arrayOf<CordaSerializationEncoding?>(null) + CordaSerializationEncoding.values()
     }
 
-    private lateinit var factory: CheckpointSerializationFactory
     private lateinit var context: CheckpointSerializationContext
 
     @Before
     fun setup() {
-        factory = CheckpointSerializationFactory(KryoServerSerializationScheme())
         context = CheckpointSerializationContextImpl(
                 javaClass.classLoader,
                 AllWhitelist,
@@ -65,15 +63,15 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
     fun `simple data class`() {
         val birthday = Instant.parse("1984-04-17T00:30:00.00Z")
         val mike = Person("mike", birthday)
-        val bits = mike.checkpointSerialize(factory, context)
-        assertThat(bits.checkpointDeserialize(factory, context)).isEqualTo(Person("mike", birthday))
+        val bits = mike.checkpointSerialize(context)
+        assertThat(bits.checkpointDeserialize(context)).isEqualTo(Person("mike", birthday))
     }
 
     @Test
     fun `null values`() {
         val bob = Person("bob", null)
-        val bits = bob.checkpointSerialize(factory, context)
-        assertThat(bits.checkpointDeserialize(factory, context)).isEqualTo(Person("bob", null))
+        val bits = bob.checkpointSerialize(context)
+        assertThat(bits.checkpointDeserialize(context)).isEqualTo(Person("bob", null))
     }
 
     @Test
@@ -81,10 +79,10 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
         val noReferencesContext = context.withoutReferences()
         val obj : ByteSequence = Ints.toByteArray(0x01234567).sequence()
         val originalList : ArrayList<ByteSequence> = ArrayList<ByteSequence>().apply { this += obj }
-        val deserialisedList = originalList.checkpointSerialize(factory, noReferencesContext).checkpointDeserialize(factory, noReferencesContext)
+        val deserialisedList = originalList.checkpointSerialize(noReferencesContext).checkpointDeserialize(noReferencesContext)
         originalList += obj
         deserialisedList += obj
-        assertThat(deserialisedList.checkpointSerialize(factory, noReferencesContext)).isEqualTo(originalList.checkpointSerialize(factory, noReferencesContext))
+        assertThat(deserialisedList.checkpointSerialize(noReferencesContext)).isEqualTo(originalList.checkpointSerialize(noReferencesContext))
     }
 
     @Test
@@ -101,14 +99,14 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
             this += instant
             this += instant
         }
-        assertThat(listWithSameInstances.checkpointSerialize(factory, noReferencesContext)).isEqualTo(listWithCopies.checkpointSerialize(factory, noReferencesContext))
+        assertThat(listWithSameInstances.checkpointSerialize(noReferencesContext)).isEqualTo(listWithCopies.checkpointSerialize(noReferencesContext))
     }
 
     @Test
     fun `cyclic object graph`() {
         val cyclic = Cyclic(3)
-        val bits = cyclic.checkpointSerialize(factory, context)
-        assertThat(bits.checkpointDeserialize(factory, context)).isEqualTo(cyclic)
+        val bits = cyclic.checkpointSerialize(context)
+        assertThat(bits.checkpointDeserialize(context)).isEqualTo(cyclic)
     }
 
     @Test
@@ -120,7 +118,7 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
         signature.verify(bitsToSign)
         assertThatThrownBy { signature.verify(wrongBits) }
 
-        val deserialisedKeyPair = keyPair.checkpointSerialize(factory, context).checkpointDeserialize(factory, context)
+        val deserialisedKeyPair = keyPair.checkpointSerialize(context).checkpointDeserialize(context)
         val deserialisedSignature = deserialisedKeyPair.sign(bitsToSign)
         deserialisedSignature.verify(bitsToSign)
         assertThatThrownBy { deserialisedSignature.verify(wrongBits) }
@@ -128,28 +126,28 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
 
     @Test
     fun `write and read Kotlin object singleton`() {
-        val serialised = TestSingleton.checkpointSerialize(factory, context)
-        val deserialised = serialised.checkpointDeserialize(factory, context)
+        val serialised = TestSingleton.checkpointSerialize(context)
+        val deserialised = serialised.checkpointDeserialize(context)
         assertThat(deserialised).isSameAs(TestSingleton)
     }
 
     @Test
     fun `check Kotlin EmptyList can be serialised`() {
-        val deserialisedList: List<Int> = emptyList<Int>().checkpointSerialize(factory, context).checkpointDeserialize(factory, context)
+        val deserialisedList: List<Int> = emptyList<Int>().checkpointSerialize(context).checkpointDeserialize(context)
         assertEquals(0, deserialisedList.size)
         assertEquals<Any>(Collections.emptyList<Int>().javaClass, deserialisedList.javaClass)
     }
 
     @Test
     fun `check Kotlin EmptySet can be serialised`() {
-        val deserialisedSet: Set<Int> = emptySet<Int>().checkpointSerialize(factory, context).checkpointDeserialize(factory, context)
+        val deserialisedSet: Set<Int> = emptySet<Int>().checkpointSerialize(context).checkpointDeserialize(context)
         assertEquals(0, deserialisedSet.size)
         assertEquals<Any>(Collections.emptySet<Int>().javaClass, deserialisedSet.javaClass)
     }
 
     @Test
     fun `check Kotlin EmptyMap can be serialised`() {
-        val deserialisedMap: Map<Int, Int> = emptyMap<Int, Int>().checkpointSerialize(factory, context).checkpointDeserialize(factory, context)
+        val deserialisedMap: Map<Int, Int> = emptyMap<Int, Int>().checkpointSerialize(context).checkpointDeserialize(context)
         assertEquals(0, deserialisedMap.size)
         assertEquals<Any>(Collections.emptyMap<Int, Int>().javaClass, deserialisedMap.javaClass)
     }
@@ -157,7 +155,7 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
     @Test
     fun `InputStream serialisation`() {
         val rubbish = ByteArray(12345) { (it * it * 0.12345).toByte() }
-        val readRubbishStream: InputStream = rubbish.inputStream().checkpointSerialize(factory, context).checkpointDeserialize(factory, context)
+        val readRubbishStream: InputStream = rubbish.inputStream().checkpointSerialize(context).checkpointDeserialize(context)
         for (i in 0..12344) {
             assertEquals(rubbish[i], readRubbishStream.read().toByte())
         }
@@ -167,7 +165,7 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
     @Test
     fun `InputStream serialisation does not write trailing garbage`() {
         val byteArrays = listOf("123", "456").map { it.toByteArray() }
-        val streams = byteArrays.map { it.inputStream() }.checkpointSerialize(factory, context).checkpointDeserialize(factory, context).iterator()
+        val streams = byteArrays.map { it.inputStream() }.checkpointSerialize(context).checkpointDeserialize(context).iterator()
         byteArrays.forEach { assertArrayEquals(it, streams.next().readBytes()) }
         assertFalse(streams.hasNext())
     }
@@ -178,8 +176,8 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
         val testBytes = testString.toByteArray()
 
         val meta = SignableData(testBytes.sha256(), SignatureMetadata(1, Crypto.findSignatureScheme(ALICE_PUBKEY).schemeNumberID))
-        val serializedMetaData = meta.checkpointSerialize(factory, context).bytes
-        val meta2 = serializedMetaData.checkpointDeserialize<SignableData>(factory, context)
+        val serializedMetaData = meta.checkpointSerialize(context).bytes
+        val meta2 = serializedMetaData.checkpointDeserialize<SignableData>(context)
         assertEquals(meta2, meta)
     }
 
@@ -187,7 +185,7 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
     fun `serialize - deserialize Logger`() {
         val storageContext: CheckpointSerializationContext = context
         val logger = LoggerFactory.getLogger("aName")
-        val logger2 = logger.checkpointSerialize(factory, storageContext).checkpointDeserialize(factory, storageContext)
+        val logger2 = logger.checkpointSerialize(storageContext).checkpointDeserialize(storageContext)
         assertEquals(logger.name, logger2.name)
         assertTrue(logger === logger2)
     }
@@ -199,7 +197,7 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
                 SecureHash.sha256(rubbish),
                 rubbish.size,
                 rubbish.inputStream()
-        ).checkpointSerialize(factory, context).checkpointDeserialize(factory, context)
+        ).checkpointSerialize(context).checkpointDeserialize(context)
         for (i in 0..12344) {
             assertEquals(rubbish[i], readRubbishStream.read().toByte())
         }
@@ -226,8 +224,8 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
                 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
                 31, 32
         ))
-        val serializedBytes = expected.checkpointSerialize(factory, context)
-        val actual = serializedBytes.checkpointDeserialize(factory, context)
+        val serializedBytes = expected.checkpointSerialize(context)
+        val actual = serializedBytes.checkpointDeserialize(context)
         assertEquals(expected, actual)
     }
 
@@ -274,14 +272,13 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
             }
         }
         Tmp()
-        val factory = CheckpointSerializationFactory(KryoServerSerializationScheme())
         val context = CheckpointSerializationContextImpl(
                 javaClass.classLoader,
                 AllWhitelist,
                 emptyMap(),
                 true,
                 null)
-        pt.checkpointSerialize(factory, context)
+        pt.checkpointSerialize(context)
     }
 
     @Test
@@ -289,7 +286,7 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
         val exception = IllegalArgumentException("fooBar")
         val toBeSuppressedOnSenderSide = IllegalStateException("bazz1")
         exception.addSuppressed(toBeSuppressedOnSenderSide)
-        val exception2 = exception.checkpointSerialize(factory, context).checkpointDeserialize(factory, context)
+        val exception2 = exception.checkpointSerialize(context).checkpointDeserialize(context)
         assertEquals(exception.message, exception2.message)
 
         assertEquals(1, exception2.suppressed.size)
@@ -304,7 +301,7 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
     @Test
     fun `serialize - deserialize Exception no suppressed`() {
         val exception = IllegalArgumentException("fooBar")
-        val exception2 = exception.checkpointSerialize(factory, context).checkpointDeserialize(factory, context)
+        val exception2 = exception.checkpointSerialize(context).checkpointDeserialize(context)
         assertEquals(exception.message, exception2.message)
         assertEquals(0, exception2.suppressed.size)
 
@@ -318,7 +315,7 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
     fun `serialize - deserialize HashNotFound`() {
         val randomHash = SecureHash.randomSHA256()
         val exception = FetchDataFlow.HashNotFound(randomHash)
-        val exception2 = exception.checkpointSerialize(factory, context).checkpointDeserialize(factory, context)
+        val exception2 = exception.checkpointSerialize(context).checkpointDeserialize(context)
         assertEquals(randomHash, exception2.requested)
     }
 
@@ -326,17 +323,17 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
     fun `compression has the desired effect`() {
         compression ?: return
         val data = ByteArray(12345).also { Random(0).nextBytes(it) }.let { it + it }
-        val compressed = data.checkpointSerialize(factory, context)
+        val compressed = data.checkpointSerialize(context)
         assertEquals(.5, compressed.size.toDouble() / data.size, .03)
-        assertArrayEquals(data, compressed.checkpointDeserialize(factory, context))
+        assertArrayEquals(data, compressed.checkpointDeserialize(context))
     }
 
     @Test
     fun `a particular encoding can be banned for deserialization`() {
         compression ?: return
         doReturn(false).whenever(context.encodingWhitelist).acceptEncoding(compression)
-        val compressed = "whatever".checkpointSerialize(factory, context)
-        catchThrowable { compressed.checkpointDeserialize(factory, context) }.run {
+        val compressed = "whatever".checkpointSerialize(context)
+        catchThrowable { compressed.checkpointDeserialize(context) }.run {
             assertSame<Any>(KryoException::class.java, javaClass)
             assertEquals(encodingNotPermittedFormat.format(compression), message)
         }
@@ -347,8 +344,8 @@ class KryoTests(private val compression: CordaSerializationEncoding?) {
         class Holder(val holder: ByteArray)
 
         val obj = Holder(ByteArray(20000))
-        val uncompressedSize = obj.checkpointSerialize(factory, context.withEncoding(null)).size
-        val compressedSize = obj.checkpointSerialize(factory, context.withEncoding(CordaSerializationEncoding.SNAPPY)).size
+        val uncompressedSize = obj.checkpointSerialize(context.withEncoding(null)).size
+        val compressedSize = obj.checkpointSerialize(context.withEncoding(CordaSerializationEncoding.SNAPPY)).size
         // If these need fixing, sounds like Kryo wire format changed and checkpoints might not surive an upgrade.
         assertEquals(20222, uncompressedSize)
         assertEquals(1111, compressedSize)

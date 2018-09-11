@@ -21,24 +21,24 @@ class ContractAttachmentSerializerTest {
     @JvmField
     val testSerialization = SerializationEnvironmentRule()
 
-    private lateinit var factory: CheckpointSerializationFactory
+    private lateinit var checkpointSerializer: CheckpointSerializer
     private lateinit var context: CheckpointSerializationContext
     private lateinit var contextWithToken: CheckpointSerializationContext
     private val mockServices = MockServices(emptyList(), CordaX500Name("MegaCorp", "London", "GB"), rigorousMock())
 
     @Before
     fun setup() {
-        factory = testSerialization.checkpointSerializationFactory
-        context = factory.defaultContext
-        contextWithToken = context.withTokenContext(CheckpointSerializeAsTokenContextImpl(Any(), factory, context, mockServices))
+        checkpointSerializer = testSerialization.checkpointSerializer
+        context = testSerialization.defaultCheckpointContext
+        contextWithToken = context.withTokenContext(CheckpointSerializeAsTokenContextImpl(Any(), checkpointSerializer, context, mockServices))
     }
 
     @Test
     fun `write contract attachment and read it back`() {
         val contractAttachment = ContractAttachment(GeneratedAttachment(EMPTY_BYTE_ARRAY), DummyContract.PROGRAM_ID)
         // no token context so will serialize the whole attachment
-        val serialized = contractAttachment.checkpointSerialize(factory, context)
-        val deserialized = serialized.checkpointDeserialize(factory, context)
+        val serialized = contractAttachment.checkpointSerialize(context)
+        val deserialized = serialized.checkpointDeserialize(context)
 
         assertEquals(contractAttachment.id, deserialized.attachment.id)
         assertEquals(contractAttachment.contract, deserialized.contract)
@@ -53,8 +53,8 @@ class ContractAttachmentSerializerTest {
         mockServices.attachments.importAttachment(attachment.open(), "test", null)
 
         val contractAttachment = ContractAttachment(attachment, DummyContract.PROGRAM_ID)
-        val serialized = contractAttachment.checkpointSerialize(factory, contextWithToken)
-        val deserialized = serialized.checkpointDeserialize(factory, contextWithToken)
+        val serialized = contractAttachment.checkpointSerialize(contextWithToken)
+        val deserialized = serialized.checkpointDeserialize(contextWithToken)
 
         assertEquals(contractAttachment.id, deserialized.attachment.id)
         assertEquals(contractAttachment.contract, deserialized.contract)
@@ -70,7 +70,7 @@ class ContractAttachmentSerializerTest {
         mockServices.attachments.importAttachment(attachment.open(), "test", null)
 
         val contractAttachment = ContractAttachment(attachment, DummyContract.PROGRAM_ID)
-        val serialized = contractAttachment.checkpointSerialize(factory, contextWithToken)
+        val serialized = contractAttachment.checkpointSerialize(contextWithToken)
 
         assertThat(serialized.size).isLessThan(largeAttachmentSize)
     }
@@ -82,8 +82,8 @@ class ContractAttachmentSerializerTest {
         // don't importAttachment in mockService
 
         val contractAttachment = ContractAttachment(attachment, DummyContract.PROGRAM_ID)
-        val serialized = contractAttachment.checkpointSerialize(factory, contextWithToken)
-        val deserialized = serialized.checkpointDeserialize(factory, contextWithToken)
+        val serialized = contractAttachment.checkpointSerialize(contextWithToken)
+        val deserialized = serialized.checkpointDeserialize(contextWithToken)
 
         assertThatThrownBy { deserialized.attachment.open() }.isInstanceOf(MissingAttachmentsException::class.java)
     }
@@ -94,8 +94,8 @@ class ContractAttachmentSerializerTest {
         // don't importAttachment in mockService
 
         val contractAttachment = ContractAttachment(attachment, DummyContract.PROGRAM_ID)
-        val serialized = contractAttachment.checkpointSerialize(factory, contextWithToken)
-        serialized.checkpointDeserialize(factory, contextWithToken)
+        val serialized = contractAttachment.checkpointSerialize(contextWithToken)
+        serialized.checkpointDeserialize(contextWithToken)
 
         // MissingAttachmentsException thrown if we try to open attachment
     }
