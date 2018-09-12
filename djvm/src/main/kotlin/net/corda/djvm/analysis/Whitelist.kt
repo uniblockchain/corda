@@ -120,6 +120,13 @@ open class Whitelist private constructor(
                 "^java/lang/.*Exception(\\..*)?$".toRegex()
         )
 
+        private val internalSet = setOf(
+            "^java/.*".toRegex(),
+            "^javax/.*".toRegex(),
+            "^jdk/internal/.*".toRegex(),
+            "^sun/.*".toRegex()
+        )
+
         /**
          * Empty whitelist.
          */
@@ -138,6 +145,11 @@ open class Whitelist private constructor(
                 everythingRegex,
                 emptySet()
         )
+
+        /**
+         * Is this class/method name internal to the JVM?
+         */
+        fun isJvmInternal(name: String): Boolean = internalSet.any { it.matches(name) }
 
         /**
          * Load a whitelist from a resource stream.

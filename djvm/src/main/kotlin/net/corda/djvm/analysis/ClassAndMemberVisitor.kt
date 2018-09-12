@@ -4,10 +4,7 @@ import net.corda.djvm.code.EmitterModule
 import net.corda.djvm.code.Instruction
 import net.corda.djvm.code.instructions.*
 import net.corda.djvm.messages.Message
-import net.corda.djvm.references.ClassReference
-import net.corda.djvm.references.ClassRepresentation
-import net.corda.djvm.references.Member
-import net.corda.djvm.references.MemberReference
+import net.corda.djvm.references.*
 import net.corda.djvm.source.SourceClassLoader
 import org.objectweb.asm.*
 import java.io.InputStream
@@ -313,7 +310,7 @@ open class ClassAndMemberVisitor(
                         signature,
                         derivedMember.exceptions.toTypedArray()
                 )
-                MethodVisitorImpl(targetVisitor)
+                MethodVisitorImpl(targetVisitor, derivedMember.body)
             } else {
                 null
             }
@@ -359,7 +356,8 @@ open class ClassAndMemberVisitor(
      * Visitor used to traverse and analyze a method.
      */
     private inner class MethodVisitorImpl(
-            targetVisitor: MethodVisitor?
+            targetVisitor: MethodVisitor?,
+            private val bodies: List<MethodBody>
     ) : MethodVisitor(API_VERSION, targetVisitor) {
 
         /**
@@ -385,6 +383,18 @@ open class ClassAndMemberVisitor(
         override fun visitAnnotation(desc: String, visible: Boolean): AnnotationVisitor? {
             visitMemberAnnotation(desc)
             return super.visitAnnotation(desc, visible)
+        }
+
+        override fun visitCode() {
+            super.visitCode()
+            if (bodies.isNotEmpty() && (mv != null)) {
+                for (body in bodies) {
+                    body(mv)
+                }
+                mv.visitMaxs(-1, -1)
+                mv.visitEnd()
+                mv = null
+            }
         }
 
         /**

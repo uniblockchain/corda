@@ -20,6 +20,8 @@ import org.objectweb.asm.ClassReader
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.Type
 import java.lang.reflect.InvocationTargetException
+import java.nio.file.Path
+import java.nio.file.Paths
 
 abstract class TestBase {
 
@@ -36,6 +38,9 @@ abstract class TestBase {
         val DEFAULT = (ALL_RULES + ALL_EMITTERS + ALL_DEFINITION_PROVIDERS)
                 .toSet().distinctBy { it.javaClass }
 
+        val DETERMINISTIC_RT: Path = Paths.get(
+                System.getProperty("deterministic-rt.path") ?: throw AssertionError("Deterministic rt.jar not found"))
+
         /**
          * Get the full name of type [T].
          */
@@ -46,7 +51,7 @@ abstract class TestBase {
     /**
      * Default analysis configuration.
      */
-    val configuration = AnalysisConfiguration(Whitelist.MINIMAL)
+    val configuration = AnalysisConfiguration(Whitelist.MINIMAL, classPath = listOf(DETERMINISTIC_RT))
 
     /**
      * Default analysis context
@@ -62,7 +67,10 @@ abstract class TestBase {
             noinline block: (RuleValidator.(AnalysisContext) -> Unit)
     ) {
         val reader = ClassReader(T::class.java.name)
-        val configuration = AnalysisConfiguration(minimumSeverityLevel = minimumSeverityLevel)
+        val configuration = AnalysisConfiguration(
+            minimumSeverityLevel = minimumSeverityLevel,
+            classPath = listOf(DETERMINISTIC_RT)
+        )
         val validator = RuleValidator(ALL_RULES, configuration)
         val context = AnalysisContext.fromConfiguration(
                 configuration,
@@ -118,6 +126,7 @@ abstract class TestBase {
                 val pinnedTestClasses = pinnedClasses.map(Type::getInternalName).toSet()
                 val analysisConfiguration = AnalysisConfiguration(
                         whitelist = whitelist,
+                        classPath = listOf(DETERMINISTIC_RT),
                         additionalPinnedClasses = pinnedTestClasses,
                         minimumSeverityLevel = minimumSeverityLevel
                 )

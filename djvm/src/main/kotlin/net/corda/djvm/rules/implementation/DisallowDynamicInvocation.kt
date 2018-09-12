@@ -11,8 +11,7 @@ import net.corda.djvm.validation.RuleContext
 class DisallowDynamicInvocation : InstructionRule() {
 
     override fun validate(context: RuleContext, instruction: Instruction) = context.validate {
-        fail("Disallowed dynamic invocation in method") given (instruction is DynamicInvocationInstruction)
-        // TODO Allow specific lambda and string concatenation meta-factories used by Java code itself
+        fail("Disallowed dynamic invocation in method") given (!clazz.name.startsWith("java/") && instruction is DynamicInvocationInstruction)
     }
 
 }
